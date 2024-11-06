@@ -1,4 +1,5 @@
 import sys
+from typing import Self
 
 from conan import ConanFile
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
@@ -59,8 +60,5 @@ class ossczRecipe(ConanFile):
         cmake = CMake(self)
         cmake.install()
 
-    def build_requirements(self):
-        self.tool_requires("cmake/3.30.5")
-
-    def requirements(self):
-        self.requires("fmt/11.0.2")
+    def requirements(self: Self):
+        self.requires("spdlog/1.14.1")
