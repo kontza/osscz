@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.30)
-project(osscz CXX)
+project(osscz LANGUAGES CXX VERSION 0.1.0)
+configure_file(version.h.in version.h)
+
+find_package(fmt REQUIRED)
 
 
+add_executable(${PROJECT_NAME} src/osscz.cpp src/main.cpp)
+target_link_libraries(${PROJECT_NAME} fmt::fmt)
+target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_BINARY_DIR}")
 
-add_executable(osscz src/osscz.cpp src/main.cpp)
-
-
-
-install(TARGETS osscz DESTINATION "."
+install(TARGETS ${PROJECT_NAME} DESTINATION "."
         RUNTIME DESTINATION bin
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib

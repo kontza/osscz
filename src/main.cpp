@@ -1,12 +1,10 @@
-#include "osscz.h"
-#include <vector>
-#include <string>
+#include "version.h"
+#include <fmt/core.h>
 
-int main() {
-    osscz();
-
-    std::vector<std::string> vec;
-    vec.push_back("test_package");
-
-    osscz_print_vector(vec);
+int main(int argc, char *argv[]) {
+  if (argc != 2) {
+    fmt::println("{} v{}\n\nGimme a single SSH host name to work on!", APP_NAME,
+                 APP_VERSION);
+  }
+  return 0;
 }

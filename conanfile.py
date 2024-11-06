@@ -1,10 +1,31 @@
+import sys
+
 from conan import ConanFile
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
 
 
+def get_version() -> str:
+    with open("CMakeLists.txt", "r") as cmakelists:
+        for line in cmakelists.readlines():
+            if line.strip().startswith("project") and "VERSION" in line:
+                capture = False
+                version = ""
+                for part in line.split():
+                    if part == "VERSION":
+                        capture = True
+                        continue
+                    if capture:
+                        version = part.replace(")", "")
+                        break
+                print(f"Found version {version} from CMakeLists.txt")
+                return version
+    print("Did not find application version from CMakeLists.txt!", file=sys.stderr)
+    return "N/A"
+
+
 class ossczRecipe(ConanFile):
     name = "osscz"
-    version = "0.1.0"
+    version = get_version()
     package_type = "application"
 
     # Optional metadata
@@ -37,6 +58,9 @@ class ossczRecipe(ConanFile):
     def package(self):
         cmake = CMake(self)
         cmake.install()
+
+    def build_requirements(self):
+        self.tool_requires("cmake/3.30.5")
 
     def requirements(self):
         self.requires("fmt/11.0.2")
