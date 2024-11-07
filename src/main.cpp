@@ -4,11 +4,14 @@
 #include <filesystem>
 #include <fmt/core.h>
 #include <memory>
+#include <regex>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <sys/_types/_pid_t.h>
+#include <toml.hpp>
 #include <unistd.h>
+#include <vector>
 
 #ifdef NDEBUG
 #define BUILD ""
@@ -17,6 +20,7 @@
 #endif
 
 #define LOG_NAME "ssh_colouriser.log"
+#define TOML_NAME "scz.toml"
 std::shared_ptr<spdlog::logger> logger;
 
 spdlog::filename_t get_log_filename() {
@@ -34,34 +38,49 @@ spdlog::filename_t get_log_filename() {
 std::string pidToCommandLine(pid_t pid) {
   auto const cmd = fmt::format("/bin/ps -eo args= {}", pid);
   std::array<char, 1024> buffer;
-  std::string result;
   std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"),
                                                 pclose);
+  std::string result{""};
   if (!pipe) {
     throw std::runtime_error("popen() failed!");
-  } else {
-    spdlog::info("pipe succeeded");
   }
-  for (auto ptr = fgets(buffer.data(), buffer.size(), pipe.get());
-       ptr != NULL || ::feof(pipe.get()) == 0;
-       ptr = fgets(buffer.data(), buffer.size(), pipe.get())) {
-    spdlog::info("received {}", ptr);
-    result += ptr;
-    spdlog::info("result so far {}", result);
-    if (feof(pipe.get())) {
-      spdlog::info("EOF");
-      pclose(pipe.get());
-      break;
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != NULL) {
+    result += buffer.data();
+  }
+  for (auto it = result.rbegin(); it != result.rend(); it++) {
+    if (*it == '\n') {
+      *it = '\0';
     }
   }
-  return result;
+
+  return std::move(result);
 }
 
 bool shouldChangeTheme() {
   auto const ppid = getppid();
-  auto const parent_command_line = pidToCommandLine(ppid);
-  logger->info("Parent command line: {}", parent_command_line);
-  return false;
+  auto parent_command_line = pidToCommandLine(ppid);
+  logger->info("Parent, {}, command line: '{}'", ppid, parent_command_line);
+  auto config_home_ptr = std::getenv("XDG_CONFIG_HOME");
+  std::string config_home;
+  if (config_home_ptr == nullptr) {
+    config_home = std::getenv("HOME");
+  } else {
+    config_home = config_home_ptr;
+  }
+  std::filesystem::path config_path = config_home;
+  std::filesystem::path toml_path = config_path / TOML_NAME;
+  auto toml = toml::parse(toml_path.string());
+  auto bypasses = toml::find<std::vector<std::string>>(toml, "bypasses");
+  for (auto bypass : bypasses) {
+    std::regex checker(bypass, std::regex_constants::ECMAScript);
+    logger->info("Checking against '{}'", bypass);
+    if (std::regex_search(parent_command_line, checker)) {
+      logger->info("Matched");
+      return false;
+    }
+  }
+  logger->info("None of the bypasses matched");
+  return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -73,7 +92,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Set up logging to file.
-  auto logger = spdlog::daily_logger_mt(APP_NAME, get_log_filename(), 3, 14);
+  logger = spdlog::daily_logger_mt(APP_NAME, get_log_filename(), 3, 14);
   std::time_t now = std::time(nullptr);
   logger->info("=== {:%Y-%m-%d} {:%H:%M:%S}", fmt::localtime(now),
                fmt::localtime(now));
