@@ -8,6 +8,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <sys/_types/_pid_t.h>
 #include <toml.hpp>
 #include <unistd.h>
@@ -32,6 +33,39 @@ void resetScheme() {
   fmt::print("\x1b]110\x07");
   fmt::print("\x1b]111\x07");
   fmt::print("\x1b]112\x07");
+}
+
+std::string getThemeName(std::string host_name) {
+  auto const cmd = fmt::format("ssh -G {}", host_name);
+  std::array<char, 1024> buffer;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"),
+                                                pclose);
+  std::string result{""};
+  if (!pipe) {
+    throw std::runtime_error("popen() failed!");
+  }
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != NULL) {
+    result += buffer.data();
+  }
+  return "";
+  //
+  //
+  // var lines = std.mem.split(u8, proc.stdout, "\n");
+  // while (lines.next())
+  //   | line | {
+  //     var parts = std.mem.split(u8, line, "=");
+  //     const part = std.mem.trim(u8, parts.next() orelse "", strippables);
+  //     if (std.mem.eql(u8, part, "setenv TERMINAL_THEME")) {
+  //       const theme_name =
+  //           std.mem.trim(u8, parts.next() orelse "", strippables);
+  //       return try allocator.dupeZ(u8, theme_name);
+  //     }
+  //   }
+  // return error.OperationAborted;
+}
+
+void setScheme(std::string host_name) {
+  auto const theme_name = getThemeName(host_name);
 }
 
 spdlog::filename_t get_log_filename() {
@@ -116,6 +150,7 @@ int main(int argc, char *argv[]) {
     if (host_name == reset_scheme) {
       resetScheme();
     } else {
+      setScheme(host_name);
     }
   }
 
