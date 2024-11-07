@@ -23,6 +23,17 @@
 #define TOML_NAME "scz.toml"
 std::shared_ptr<spdlog::logger> logger;
 
+void resetScheme() {
+  logger->info("Going to reset scheme");
+  int counter = 0;
+  for (int counter = 0; counter < 15; counter++) {
+    fmt::print("\x1b]104;{}\x07", '0' + counter);
+  }
+  fmt::print("\x1b]110\x07");
+  fmt::print("\x1b]111\x07");
+  fmt::print("\x1b]112\x07");
+}
+
 spdlog::filename_t get_log_filename() {
   auto tmp_dir_ptr = std::getenv("TMPDIR");
   std::string tmp_dir;
@@ -99,7 +110,14 @@ int main(int argc, char *argv[]) {
   logger->info("Welcome my son, welcome to the machine!");
 
   // Should we change the theme?
-  auto const do_work_or_failed = shouldChangeTheme();
+  if (shouldChangeTheme()) {
+    auto host_name = argv[1];
+    auto reset_scheme = std::string{"RESET-SCHEME"};
+    if (host_name == reset_scheme) {
+      resetScheme();
+    } else {
+    }
+  }
 
   // Done.
   logger->info("All done, TTFN!");
