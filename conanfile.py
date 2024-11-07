@@ -62,3 +62,4 @@ class ossczRecipe(ConanFile):
 
     def requirements(self: Self):
         self.requires("spdlog/1.14.1")
+        self.requires("toml11/4.2.0")
