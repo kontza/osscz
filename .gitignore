@@ -713,3 +713,4 @@ build/
 .vscode/
 
 # End of https://www.toptal.com/developers/gitignore/api/c++,visualstudio,visualstudiocode,cmake,vcpkg,clion,windows,linux,macos,emacs
+src/version.h

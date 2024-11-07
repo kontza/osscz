@@ -1,5 +1,5 @@
 #include "version.h"
-#include <_stdio.h>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fmt/core.h>
@@ -9,6 +9,12 @@
 #include <spdlog/spdlog.h>
 #include <sys/_types/_pid_t.h>
 #include <unistd.h>
+
+#ifdef NDEBUG
+#define BUILD ""
+#else
+#define BUILD "-DBG"
+#endif
 
 #define LOG_NAME "ssh_colouriser.log"
 std::shared_ptr<spdlog::logger> logger;
@@ -37,7 +43,7 @@ std::string pidToCommandLine(pid_t pid) {
     spdlog::info("pipe succeeded");
   }
   for (auto ptr = fgets(buffer.data(), buffer.size(), pipe.get());
-       ptr != NULL || feof(pipe.get() == 0);
+       ptr != NULL || ::feof(pipe.get()) == 0;
        ptr = fgets(buffer.data(), buffer.size(), pipe.get())) {
     spdlog::info("received {}", ptr);
     result += ptr;
@@ -61,7 +67,7 @@ bool shouldChangeTheme() {
 int main(int argc, char *argv[]) {
   // Sanity check on command line arguments.
   if (argc != 2) {
-    fmt::println("{} v{}", APP_NAME, APP_VERSION);
+    fmt::println("{} v{}{}", APP_NAME, APP_VERSION, BUILD);
     spdlog::critical("Gimme a single SSH host name to work on!");
     return 1;
   }
