@@ -15,6 +15,7 @@ cmake-release: conan-release
 # R-3. Build release
 release:
     cmake --build --preset conan-release
+    cp ./build/Release/osscz $HOME/.local/bin/
 
 # D-1. Generate build/Debug configuration
 conan-debug:
