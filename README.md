@@ -17,7 +17,7 @@ _Osscz_ automatically adjusts your terminal theme when connecting to different S
 
 ## System Requirements
 
-- **Operating System**: Linux or macOS
+- **Operating System**: macOS
 - **C++ Compiler**: Support for C++23 or later
 - **Libraries**:
   - `fmt` for formatting
@@ -30,21 +30,17 @@ _Osscz_ automatically adjusts your terminal theme when connecting to different S
 
 Ensure you have Just, Conan v2.x, Cmake v3.30, and a C++ compiler and required libraries installed. On Ubuntu, you can install them with:
 
-```bash
-sudo apt install g++ libfmt-dev libspdlog-dev
-```
+Using Homebrew:
 
-For macOS, you might use Homebrew:
-
-```bash
-brew install fmt spdlog
+```sh
+brew install fmt spdlog cmake conan just
 ```
 
 ### Step 2: Compile the Application
 
 Clone the repository and compile the code:
 
-```bash
+```sh
 git clone https://github.com/kontza/osscz.git
 cd osscz
 just cmake-release
@@ -57,7 +53,6 @@ The application uses environment variables for configuration:
 
 - `GHOSTTY_RESOURCES_DIR`: Directory containing theme files. Usually set automatically by Ghostty. If it is not set, it is:
   * macOS: `/Applications/Ghostty.app/Contents/Resources/ghostty`
-  * Linux: `/usr/share/ghostty`
 `
 - `XDG_CONFIG_HOME`: Directory where `scz.toml` configuration file is located. Usually this is `$HOME/.config/`.
 
@@ -98,5 +93,5 @@ bypasses = [
 
 ## Troubleshooting
 
-- **Logs**: Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`, on Linux `/tmp/ssh_colouriser_[DATE].log`.
+- **Logs**: Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`.
 - **SSH Configuration**: Ensure `setenv TERMINAL_THEME` is set in your SSH config for each host.
