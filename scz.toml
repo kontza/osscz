@@ -1,0 +1,14 @@
+bypasses = [
+    # Bypass Consul operations on remote servers
+    "CONSUL_HTTP_TOKEN",
+    # Bypass: git over SSH
+    "git-upload-pack",
+    # Bypass: git over SSH
+    "git-receive-pack",
+    # Bypass: rsync over SSH
+    "rsync",
+    # Bypass: ProxyJump stage with SSH
+    "ssh -W",
+    # BatchMode; e.g. tab completion in an 'scp' command completion on remote server
+    "BatchMode yes",
+]

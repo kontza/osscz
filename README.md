@@ -1,13 +1,102 @@
-# osscz
-Set Ghostty pane background colour on SSH connection.
+# Osscz, an SSH Colouriser User Guide
 
-## How to Setup
-TBD…
+Welcome to _osscz_, a command-line application designed to dynamically change Ghostty's terminal themes based on SSH connections. This guide will help you install, configure, and use _osscz_ effectively.
 
-## How It Works
-1. Get grand parent PID, GPPID.
-2. Get GPPID's command line.
-3. Check for specific command line pattern that should not be coloured.
-4. Change theme.
-5. On GPPID exit, restore theme.
+## Table of Contents
 
+1. [Introduction](#introduction)
+2. [System Requirements](#system-requirements)
+3. [Installation](#installation)
+4. [Configuration](#configuration)
+5. [Basic Usage](#basic-usage)
+6. [Troubleshooting](#troubleshooting)
+
+## Introduction
+
+_Osscz_ automatically adjusts your terminal theme when connecting to different SSH hosts. By specifying themes in your SSH configuration, you can have a personalized terminal experience for each host.
+
+## System Requirements
+
+- **Operating System**: Linux or macOS
+- **C++ Compiler**: Support for C++23 or later
+- **Libraries**:
+  - `fmt` for formatting
+  - `spdlog` for logging
+  - `toml11` for TOML parsing
+
+## Installation
+
+### Step 1: Prerequisites
+
+Ensure you have Just, Conan v2.x, Cmake v3.30, and a C++ compiler and required libraries installed. On Ubuntu, you can install them with:
+
+```bash
+sudo apt install g++ libfmt-dev libspdlog-dev
+```
+
+For macOS, you might use Homebrew:
+
+```bash
+brew install fmt spdlog
+```
+
+### Step 2: Compile the Application
+
+Clone the repository and compile the code:
+
+```bash
+git clone https://github.com/kontza/osscz.git
+cd osscz
+just cmake-release
+# Binary is copied to $HOME/.local/bin/
+```
+
+### Step 3: Set Up Environment
+
+The application uses environment variables for configuration:
+
+- `GHOSTTY_RESOURCES_DIR`: Directory containing theme files. Usually set automatically by Ghostty. If it is not set, it is:
+  * macOS: `/Applications/Ghostty.app/Contents/Resources/ghostty`
+  * Linux: `/usr/share/ghostty`
+`
+- `XDG_CONFIG_HOME`: Directory where `scz.toml` configuration file is located. Usually this is `$HOME/.config/`.
+
+## Configuration
+
+Create a configuration file `scz.toml` in your `XDG_CONFIG_HOME` directory. This file should contain a list of patterns to bypass theme from changing. See the included `scz.toml` for examples.
+
+```toml
+bypasses = [
+    # Bypass Consul operations on remote servers
+    "CONSUL_HTTP_TOKEN",
+    # Bypass: git over SSH
+    "git-upload-pack",
+    # Bypass: git over SSH
+    "git-receive-pack",
+    # Bypass: rsync over SSH
+    "rsync",
+    # Bypass: ProxyJump stage with SSH
+    "ssh -W",
+    # BatchMode; e.g. tab completion in an 'scp' command completion on remote server
+    "BatchMode yes",
+]
+```
+
+## Basic Usage
+
+- **Change Theme**: Automatically changes terminal theme based on SSH host:
+  * You need to add the following in your `~/ssh/config` for a host you want to change the theme:
+    * `PermitLocalCommand yes`
+    * `SetEnv TERMINAL_THEME=[theme name from running 'ghostty +list-themes']`
+    * `LocalCommand [absolute path to]/osscz %n`
+  * _Osscz_ starts to wait for its parent SSH process to quit. When SSH quits, it automatically reset back to the default color theme.
+- **Reset Theme**: To reset the theme manually, run:
+
+  ```sh
+  osscz RESET-SCHEME
+  ```
+
+## Troubleshooting
+
+- **Logs**: Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`, on Linux `/tmp/ssh_colouriser_[DATE].log`.
+- **SSH Configuration**: Ensure `setenv TERMINAL_THEME` is set in your SSH config for each host.
