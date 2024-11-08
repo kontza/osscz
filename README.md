@@ -83,7 +83,7 @@ bypasses = [
   * You need to add the following in your `~/ssh/config` for a host you want to change the theme:
     * `PermitLocalCommand yes`
     * `SetEnv TERMINAL_THEME=[theme name from running 'ghostty +list-themes']`
-    * `LocalCommand [absolute path to]/osscz %n`
+    * `LocalCommand $HOME/.local/bin/osscz %n`
   * _Osscz_ starts to wait for its parent SSH process to quit. When SSH quits, it automatically reset back to the default color theme.
 - **Reset Theme**: To reset the theme manually, run:
 
@@ -93,5 +93,4 @@ bypasses = [
 
 ## Troubleshooting
 
-- **Logs**: Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`.
-- **SSH Configuration**: Ensure `setenv TERMINAL_THEME` is set in your SSH config for each host.
+- **Logs**: Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`. From there you can check the parent command line to see if it matches some entry in your bypasses.
