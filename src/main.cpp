@@ -6,6 +6,7 @@
 #include <iosfwd>
 #include <map>
 #include <memory>
+#include <ranges>
 #include <regex>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/daily_file_sink.h>
@@ -25,16 +26,32 @@
 #define LOG_NAME "ssh_colouriser.log"
 #define TOML_NAME "scz.toml"
 #define THEME_MARKER "TERMINAL_THEME"
+#define PALETTE "palette"
 #define MACOS_RESOURCE_DIR                                                     \
   "/Applications/Ghostty.app/Contents/Resources/ghostty"
 #define LINUX_RESOURCE_DIR "/usr/share/ghostty"
 std::shared_ptr<spdlog::logger> logger;
 static std::map<std::string, std::string> patterns = {
-    {"palette", "4;"},
+    {PALETTE, "4;"},
     {"foreground", "10;#"},
     {"background", "11;#"},
     {"cursor-color", "12;#"},
 };
+
+// trim from start (in place)
+inline void ltrim(std::string &s) {
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+          }));
+}
+
+// trim from end (in place)
+inline void rtrim(std::string &s) {
+  s.erase(std::find_if(s.rbegin(), s.rend(),
+                       [](unsigned char ch) { return !std::isspace(ch); })
+              .base(),
+          s.end());
+}
 
 std::string runCommand(std::string cmd) {
   std::array<char, 1024> buffer;
@@ -60,12 +77,6 @@ void resetScheme() {
   fmt::print("\x1b]110\x07");
   fmt::print("\x1b]111\x07");
   fmt::print("\x1b]112\x07");
-}
-
-inline void ltrim(std::string &s) {
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-            return !std::isspace(ch);
-          }));
 }
 
 std::string getThemeName(std::string host_name) {
@@ -105,19 +116,60 @@ void setSchemeForHost(std::string host_name) {
       res_dir_name = res_dir_name_ptr;
     }
     logger->info("Reading Ghostty resources from '{}'", res_dir_name);
-    std::filesystem::path res_dir{"res_dir_name"};
+    std::filesystem::path res_dir{res_dir_name};
     auto theme_path{res_dir / "themes" / theme_name};
+    logger->info("Theme file '{}'", theme_path.string());
     std::ifstream file(theme_path);
     if (file.is_open()) {
       std::string line;
+      // Scan theme file.
       while (std::getline(file, line)) {
         ltrim(line);
+        // Bypass empty lines, and comment lines.
         if (!line.length() || line.starts_with('#')) {
           continue;
         }
-        // HERE
+        // Sample lines:
+        //   palette = 15=#f5f7ff
+        //   background = 202746
+        // Split line from first '='.
+        auto eq_pos = line.find('=');
+        if (eq_pos == std::string::npos) {
+          continue;
+        }
+        // 'palette' or 'background'
+        auto setting_name = line.substr(0, eq_pos);
+        rtrim(setting_name);
+        // '15=#f5f7ff' or '202746'
+        auto setting = line.substr(1 + eq_pos);
+        ltrim(setting);
+        // Now we have either '15=#f5f7ff', or '202746'.
+        // Get keys from patterns map.
+        auto kv = std::views::keys(patterns);
+        std::vector<std::string> keys{kv.begin(), kv.end()};
+        std::string to_log{""};
+        // Iterate over those map keys.
+        for (auto const &pattern : keys) {
+          // Does the current map key match the current line's setting name?
+          if (pattern == setting_name) {
+            // Convert '15=#f5f7ff' to '15;#f5f7ff'.
+            // '202746' will be left as is.
+            std::replace(setting.begin(), setting.end(), '=', ';');
+            // Sanity check: do we have a value to set?
+            if (setting.length() > 0) {
+              // Escape backslashes for logging.
+              to_log = fmt::format("\\x1b]{}{}\\x07", patterns[setting_name],
+                                   setting);
+              logger->info("'{}': Would use '{}'", line, to_log);
+              // Print out ANSI escape codes to set colors.
+              fmt::print("\x1b]{}{}\x07", patterns[setting_name], setting);
+            }
+          }
+        }
       }
       file.close();
+    } else {
+      logger->info("Theme file not open!");
     }
   } else {
     logger->info("No {} found for '{}'", THEME_MARKER, host_name);
