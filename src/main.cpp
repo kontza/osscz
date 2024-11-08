@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fmt/core.h>
+#include <iosfwd>
+#include <map>
 #include <memory>
 #include <regex>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -22,7 +24,32 @@
 
 #define LOG_NAME "ssh_colouriser.log"
 #define TOML_NAME "scz.toml"
+#define THEME_MARKER "TERMINAL_THEME"
+#define MACOS_RESOURCE_DIR                                                     \
+  "/Applications/Ghostty.app/Contents/Resources/ghostty"
+#define LINUX_RESOURCE_DIR "/usr/share/ghostty"
 std::shared_ptr<spdlog::logger> logger;
+static std::map<std::string, std::string> patterns = {
+    {"palette", "4;"},
+    {"foreground", "10;#"},
+    {"background", "11;#"},
+    {"cursor-color", "12;#"},
+};
+
+std::string runCommand(std::string cmd) {
+  std::array<char, 1024> buffer;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"),
+                                                pclose);
+  std::string result{""};
+  if (!pipe) {
+    auto const msg = fmt::format("Failed to popen() on '{}'", cmd);
+    throw std::runtime_error(msg);
+  }
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != NULL) {
+    result += buffer.data();
+  }
+  return std::move(result);
+}
 
 void resetScheme() {
   logger->info("Going to reset scheme");
@@ -35,37 +62,66 @@ void resetScheme() {
   fmt::print("\x1b]112\x07");
 }
 
-std::string getThemeName(std::string host_name) {
-  auto const cmd = fmt::format("ssh -G {}", host_name);
-  std::array<char, 1024> buffer;
-  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"),
-                                                pclose);
-  std::string result{""};
-  if (!pipe) {
-    throw std::runtime_error("popen() failed!");
-  }
-  while (fgets(buffer.data(), buffer.size(), pipe.get()) != NULL) {
-    result += buffer.data();
-  }
-  return "";
-  //
-  //
-  // var lines = std.mem.split(u8, proc.stdout, "\n");
-  // while (lines.next())
-  //   | line | {
-  //     var parts = std.mem.split(u8, line, "=");
-  //     const part = std.mem.trim(u8, parts.next() orelse "", strippables);
-  //     if (std.mem.eql(u8, part, "setenv TERMINAL_THEME")) {
-  //       const theme_name =
-  //           std.mem.trim(u8, parts.next() orelse "", strippables);
-  //       return try allocator.dupeZ(u8, theme_name);
-  //     }
-  //   }
-  // return error.OperationAborted;
+inline void ltrim(std::string &s) {
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+          }));
 }
 
-void setScheme(std::string host_name) {
+std::string getThemeName(std::string host_name) {
+  logger->info("Scanning SSH config for {}", THEME_MARKER);
+  auto result = runCommand(fmt::format("ssh -G {}", host_name));
+  std::stringstream ss(result);
+  std::string line;
+  char delimiter = '\n';
+  std::string theme_marker{fmt::format("setenv {}", THEME_MARKER)};
+  while (getline(ss, line, delimiter)) {
+    ltrim(line);
+    if (!line.starts_with('#') && line.contains(theme_marker)) {
+      logger->info("{} found", THEME_MARKER);
+      auto eq_pos = line.find('=');
+      if (eq_pos != std::string::npos) {
+        auto theme_name = line.substr(1 + eq_pos);
+        logger->info("Theme name: '{}'", theme_name);
+        return std::move(theme_name);
+      }
+    }
+  }
+  return "";
+}
+
+void setSchemeForHost(std::string host_name) {
   auto const theme_name = getThemeName(host_name);
+  if (theme_name.length()) {
+    auto res_dir_name_ptr = std::getenv("GHOSTTY_RESOURCES_DIR");
+    std::string res_dir_name;
+    if (res_dir_name_ptr == nullptr) {
+#ifdef __APPLE__
+      res_dir_name = MACOS_RESOURCE_DIR;
+#else
+      res_dir_name = LINUX_RESOURCE_DIR;
+#endif // __APPLE__
+    } else {
+      res_dir_name = res_dir_name_ptr;
+    }
+    logger->info("Reading Ghostty resources from '{}'", res_dir_name);
+    std::filesystem::path res_dir{"res_dir_name"};
+    auto theme_path{res_dir / "themes" / theme_name};
+    std::ifstream file(theme_path);
+    if (file.is_open()) {
+      std::string line;
+      while (std::getline(file, line)) {
+        ltrim(line);
+        if (!line.length() || line.starts_with('#')) {
+          continue;
+        }
+        // HERE
+      }
+      file.close();
+    }
+  } else {
+    logger->info("No {} found for '{}'", THEME_MARKER, host_name);
+  }
 }
 
 spdlog::filename_t get_log_filename() {
@@ -81,23 +137,12 @@ spdlog::filename_t get_log_filename() {
 }
 
 std::string pidToCommandLine(pid_t pid) {
-  auto const cmd = fmt::format("/bin/ps -eo args= {}", pid);
-  std::array<char, 1024> buffer;
-  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"),
-                                                pclose);
-  std::string result{""};
-  if (!pipe) {
-    throw std::runtime_error("popen() failed!");
-  }
-  while (fgets(buffer.data(), buffer.size(), pipe.get()) != NULL) {
-    result += buffer.data();
-  }
+  auto result = runCommand(fmt::format("/bin/ps -eo args= {}", pid));
   for (auto it = result.rbegin(); it != result.rend(); it++) {
     if (*it == '\n') {
       *it = '\0';
     }
   }
-
   return std::move(result);
 }
 
@@ -150,7 +195,7 @@ int main(int argc, char *argv[]) {
     if (host_name == reset_scheme) {
       resetScheme();
     } else {
-      setScheme(host_name);
+      setSchemeForHost(host_name);
     }
   }
 
