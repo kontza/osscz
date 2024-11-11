@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
-project(osscz LANGUAGES CXX VERSION 0.1.0)
+project(osscz LANGUAGES CXX VERSION 1.0.0)
 configure_file(version.h.in version.h)
 
 find_package(spdlog REQUIRED)
