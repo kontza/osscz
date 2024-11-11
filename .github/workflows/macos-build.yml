@@ -22,14 +22,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get Conan & Just
-        run: brew install conan just
+      - name: Install Conan
+        run: brew install conan
 
       - name: Install Conan profile
-        run: mkdir -p $HOME/.conan2/profiles && cp ./conan2/default $HOME/.conan2/profiles/
+        run: |
+          mkdir -p $HOME/.conan2/profiles
+          cp ./conan2/default $HOME/.conan2/profiles/
+
+      - name: Generate buildfiles
+        run: conan install . --build missing
 
       - name: Configure CMake
-        run: just cmake-release
+        run: |
+          cmake --preset conan-release
+          cp build/Release/version.h src/
 
       - name: Build
-        run: just release
+        run: cmake --build --preset conan-release
