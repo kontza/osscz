@@ -22,11 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get Conan
-        run: pip3 install --user --break-system-packages conan
-
-      - name: Get Just
-        run: brew install Just
+      - name: Get Conan & Just
+        run: brew install conan just
 
       - name: Install Conan profile
         run: mkdir -p $HOME/.conan2/profiles && cp ./conan2/default $HOME/.conan2/profiles/
