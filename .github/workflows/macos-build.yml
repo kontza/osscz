@@ -25,6 +25,9 @@ jobs:
       - name: Get Conan && Just
         run: brew install conan just
 
+      - name: Install Conan profile
+        run: cp ./conan2/default $HOME/.conan2/profiles/
+
       - name: Configure CMake
         run: just cmake-release
 
