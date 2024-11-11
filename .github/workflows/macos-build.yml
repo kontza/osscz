@@ -40,3 +40,7 @@ jobs:
 
       - name: Build
         run: cmake --build --preset conan-release
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
