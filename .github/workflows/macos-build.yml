@@ -28,6 +28,9 @@ jobs:
       - name: Install Conan profile
         run: mkdir -p $HOME/.conan2/profiles && cp ./conan2/default $HOME/.conan2/profiles/
 
+      - name: Run Conan
+        run: just conan-release
+
       - name: Configure CMake
         run: just cmake-release
 
