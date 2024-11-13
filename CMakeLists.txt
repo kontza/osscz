@@ -5,7 +5,12 @@ configure_file(version.h.in version.h)
 find_package(spdlog REQUIRED)
 find_package(toml11 REQUIRED)
 
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME}
+        src/trim.cpp
+        src/signals.cpp
+        src/themes.cpp
+        src/cmd.cpp
+        src/main.cpp)
 target_link_libraries(${PROJECT_NAME} spdlog::spdlog)
 target_link_libraries(${PROJECT_NAME} toml11::toml11)
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_BINARY_DIR}")
