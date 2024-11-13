@@ -53,81 +53,93 @@ std::string getThemeName(std::string host_name) {
   return "";
 }
 
-void setSchemeForHost(std::string host_name) {
-  auto const theme_name = getThemeName(host_name);
-  if (theme_name.length()) {
-    auto res_dir_name_ptr = std::getenv("GHOSTTY_RESOURCES_DIR");
-    std::string res_dir_name;
-    if (res_dir_name_ptr == nullptr) {
+void handleTomlTheme(std::string theme_name) {}
+
+void handleGhosttyTheme(std::string theme_name) {
+  auto res_dir_name_ptr = std::getenv("GHOSTTY_RESOURCES_DIR");
+  std::string res_dir_name;
+  if (res_dir_name_ptr == nullptr) {
 #ifdef __APPLE__
-      res_dir_name = MACOS_RESOURCE_DIR;
+    res_dir_name = MACOS_RESOURCE_DIR;
 #else
-      res_dir_name = LINUX_RESOURCE_DIR;
+    res_dir_name = LINUX_RESOURCE_DIR;
 #endif // __APPLE__
-    } else {
-      res_dir_name = res_dir_name_ptr;
-    }
-    logger->info("Reading Ghostty resources from '{}'", res_dir_name);
-    std::filesystem::path res_dir{res_dir_name};
-    auto theme_path{res_dir / "themes" / theme_name};
-    logger->info("Theme file '{}'", theme_path.string());
-    std::ifstream file(theme_path);
-    if (file.is_open()) {
-      std::string line;
-      // Scan theme file.
-      while (std::getline(file, line)) {
-        ltrim(line);
-        // Bypass empty lines, and comment lines.
-        if (!line.length() || line.starts_with('#')) {
-          continue;
-        }
-        // Sample lines:
-        //   palette = 15=#f5f7ff
-        //   background = 202746
-        // Split line from first '='.
-        auto eq_pos = line.find('=');
-        if (eq_pos == std::string::npos) {
-          continue;
-        }
-        // 'palette' or 'background'
-        auto setting_name = line.substr(0, eq_pos);
-        rtrim(setting_name);
-        // '15=#f5f7ff' or '202746'
-        auto setting = line.substr(1 + eq_pos);
-        ltrim(setting);
-        // Now we have either '15=#f5f7ff', or '202746'.
-        // Get keys from patterns map.
-        auto kv = std::views::keys(patterns);
-        auto kotain = std::views::keys(patterns);
-        std::vector<std::string> keys{kv.begin(), kv.end()};
-        std::string to_log{""};
-        // Iterate over those map keys.
-        for (auto const &pattern : keys) {
-          // Does the current map key match the current line's setting name?
-          if (pattern == setting_name) {
-            // Convert '15=#f5f7ff' to '15;#f5f7ff'.
-            // '202746' will be left as is.
-            std::replace(setting.begin(), setting.end(), '=', ';');
-            // Sanity check: do we have a value to set?
-            if (setting.length() > 0) {
-              // Escape backslashes for logging.
-              to_log = fmt::format("\\x1b]{}{}\\x07", patterns[setting_name],
-                                   setting);
-              logger->info("'{}': Would use '{}'", line, to_log);
-              // Print out ANSI escape codes to set colors.
-              fmt::print("\x1b]{}{}\x07", patterns[setting_name], setting);
-            }
+  } else {
+    res_dir_name = res_dir_name_ptr;
+  }
+  logger->info("Reading Ghostty resources from '{}'", res_dir_name);
+  std::filesystem::path res_dir{res_dir_name};
+  auto theme_path{res_dir / "themes" / theme_name};
+  logger->info("Theme file '{}'", theme_path.string());
+  std::ifstream file(theme_path);
+  if (file.is_open()) {
+    std::string line;
+    // Scan theme file.
+    while (std::getline(file, line)) {
+      ltrim(line);
+      // Bypass empty lines, and comment lines.
+      if (!line.length() || line.starts_with('#')) {
+        continue;
+      }
+      // Sample lines:
+      //   palette = 15=#f5f7ff
+      //   background = 202746
+      // Split line from first '='.
+      auto eq_pos = line.find('=');
+      if (eq_pos == std::string::npos) {
+        continue;
+      }
+      // 'palette' or 'background'
+      auto setting_name = line.substr(0, eq_pos);
+      rtrim(setting_name);
+      // '15=#f5f7ff' or '202746'
+      auto setting = line.substr(1 + eq_pos);
+      ltrim(setting);
+      // Now we have either '15=#f5f7ff', or '202746'.
+      // Get keys from patterns map.
+      auto kv = std::views::keys(patterns);
+      auto kotain = std::views::keys(patterns);
+      std::vector<std::string> keys{kv.begin(), kv.end()};
+      std::string to_log{""};
+      // Iterate over those map keys.
+      for (auto const &pattern : keys) {
+        // Does the current map key match the current line's setting name?
+        if (pattern == setting_name) {
+          // Convert '15=#f5f7ff' to '15;#f5f7ff'.
+          // '202746' will be left as is.
+          std::replace(setting.begin(), setting.end(), '=', ';');
+          // Sanity check: do we have a value to set?
+          if (setting.length() > 0) {
+            // Escape backslashes for logging.
+            to_log =
+                fmt::format("\\x1b]{}{}\\x07", patterns[setting_name], setting);
+            logger->info("'{}': Would use '{}'", line, to_log);
+            // Print out ANSI escape codes to set colors.
+            fmt::print("\x1b]{}{}\x07", patterns[setting_name], setting);
           }
         }
       }
-      file.close();
-    } else {
-      logger->info("Theme file not open!");
     }
+    file.close();
+  } else {
+    logger->info("Theme file not open!");
+  }
+}
+
+void setSchemeForHost(std::string host_name) {
+  auto const theme_name = getThemeName(host_name);
+  if (theme_name.length()) {
+    // Is this a TOML file?
+    std::filesystem::path theme_path(theme_name);
+    if (theme_path.extension().string() == ".toml") {
+      handleTomlTheme(theme_name);
+    } else {
+      handleGhosttyTheme(theme_name);
+    }
+    setupProcessHook();
   } else {
     logger->info("No {} found for '{}'", THEME_MARKER, host_name);
   }
-  setupProcessHook();
 }
 
 bool shouldChangeTheme() {
