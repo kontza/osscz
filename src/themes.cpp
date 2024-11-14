@@ -84,7 +84,7 @@ void handleTomlTheme(std::string theme_name) {
   auto background = toml::find<std::string>(toml, "colors", "background");
   std::string cursor{};
   try {
-    cursor = toml::find<std::string>(toml, "colors", "compose_cursor");
+    cursor = toml::find<std::string>(toml, "colors", "cursor_fg");
   } catch (std::out_of_range) {
     logger->info("compose_cursor not found");
   }
@@ -102,7 +102,7 @@ void handleTomlTheme(std::string theme_name) {
   printAnsiEscape(TOML, patterns["foreground"], foreground.substr(1), -1);
   printAnsiEscape(TOML, patterns["background"], background.substr(1), -1);
   if (!cursor.empty()) {
-    printAnsiEscape(TOML, patterns["cursor-color"], cursor, -1);
+    printAnsiEscape(TOML, patterns["cursor-color"], cursor.substr(1), -1);
   }
 }
 
