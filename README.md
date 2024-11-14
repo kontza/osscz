@@ -113,4 +113,6 @@ bypasses = [
 
 ## Troubleshooting
 
-- **Logs**: Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`. From there you can check the parent command line to see if it matches some entry in your bypasses.
+- **Logs**:
+  * Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`. From there you can check the parent command line to see if it matches some entry in your bypasses.
+  * Note that both _Osscz_ processes, the main process, and the forked one, log partly the same log lines. Therefore, it is advisable to first `sort` the log file to get things in linear order.
