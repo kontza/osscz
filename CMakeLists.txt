@@ -10,6 +10,7 @@ add_executable(${PROJECT_NAME}
         src/signals.cpp
         src/themes.cpp
         src/cmd.cpp
+        src/env-expand.cpp
         src/main.cpp)
 target_link_libraries(${PROJECT_NAME} spdlog::spdlog)
 target_link_libraries(${PROJECT_NAME} toml11::toml11)

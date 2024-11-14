@@ -1,15 +1,24 @@
 #include "themes.h"
 #include "cmd.h"
+#include "env-expand.h"
 #include "signals.h"
 #include "trim.h"
+#include <cmath>
 #include <filesystem>
+#include <fmt/core.h>
 #include <fstream>
 #include <map>
 #include <ranges>
 #include <regex>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 #include <toml.hpp>
 #include <unistd.h>
+
+#define LOG_ANSI_FMT "\\x1b]{}{}\\x07"
+#define PRINT_ANSI_FMT "\x1b]{}{}\x07"
+#define LOG_FMT "'{}': Would use '{}'"
+#define TOML "TOML"
 
 extern std::shared_ptr<spdlog::logger> logger;
 
@@ -53,7 +62,49 @@ std::string getThemeName(std::string host_name) {
   return "";
 }
 
-void handleTomlTheme(std::string theme_name) {}
+void printAnsiEscape(std::string line, std::string prefix, std::string value,
+                     int color_index) {
+  // Escape backslashes for logging.
+  auto value_to_print = value;
+  if (color_index >= 0) {
+    value_to_print = fmt::format("{};{}", color_index, value);
+  }
+  auto to_log = fmt::format(LOG_ANSI_FMT, prefix, value_to_print);
+  logger->info(LOG_FMT, line, to_log);
+  // Print out ANSI escape codes to set colors.
+  fmt::print(PRINT_ANSI_FMT, prefix, value);
+}
+
+void handleTomlTheme(std::string theme_name) {
+  auto toml = toml::parse(envExpand(theme_name));
+  auto ansi = toml::find<std::vector<std::string>>(toml, "colors", "ansi");
+  auto brights =
+      toml::find<std::vector<std::string>>(toml, "colors", "brights");
+  auto foreground = toml::find<std::string>(toml, "colors", "foreground");
+  auto background = toml::find<std::string>(toml, "colors", "background");
+  std::string cursor{};
+  try {
+    cursor = toml::find<std::string>(toml, "colors", "compose_cursor");
+  } catch (std::out_of_range) {
+    logger->info("compose_cursor not found");
+  }
+  int end_index = fminl(ansi.size(), 8);
+  std::string to_log{};
+
+  for (int color_index = 0; color_index < ansi.size(); color_index++) {
+    printAnsiEscape(TOML, patterns[PALETTE], ansi[color_index], color_index);
+  }
+  end_index = fminl(brights.size(), 8);
+  for (int color_index = 0; color_index < brights.size(); color_index++) {
+    printAnsiEscape(TOML, patterns[PALETTE], brights[color_index],
+                    color_index + 8);
+  }
+  printAnsiEscape(TOML, patterns["foreground"], foreground.substr(1), -1);
+  printAnsiEscape(TOML, patterns["background"], background.substr(1), -1);
+  if (!cursor.empty()) {
+    printAnsiEscape(TOML, patterns["cursor-color"], cursor, -1);
+  }
+}
 
 void handleGhosttyTheme(std::string theme_name) {
   auto res_dir_name_ptr = std::getenv("GHOSTTY_RESOURCES_DIR");
@@ -110,12 +161,7 @@ void handleGhosttyTheme(std::string theme_name) {
           std::replace(setting.begin(), setting.end(), '=', ';');
           // Sanity check: do we have a value to set?
           if (setting.length() > 0) {
-            // Escape backslashes for logging.
-            to_log =
-                fmt::format("\\x1b]{}{}\\x07", patterns[setting_name], setting);
-            logger->info("'{}': Would use '{}'", line, to_log);
-            // Print out ANSI escape codes to set colors.
-            fmt::print("\x1b]{}{}\x07", patterns[setting_name], setting);
+            printAnsiEscape(line, patterns[setting_name], setting, -1);
           }
         }
       }
