@@ -82,7 +82,8 @@ bypasses = [
 - **Change Theme**: Automatically changes terminal theme based on SSH host:
   * You need to add the following in your `~/ssh/config` for a host you want to change the theme:
     * `PermitLocalCommand yes`
-    * `SetEnv TERMINAL_THEME=[theme name from running 'ghostty +list-themes']`
+    * With Ghostty: `SetEnv TERMINAL_THEME=[theme name from running 'ghostty +list-themes']`
+    * With WezTerm: `SetEnv TERMINAL_THEME=[path to a WezTerm style color definition TOML file]`
     * `LocalCommand $HOME/.local/bin/osscz %n`
   * _Osscz_ starts to wait for its parent SSH process to quit. When SSH quits, it automatically reset back to the default color theme.
 - **Reset Theme**: To reset the theme manually, run:
