@@ -1,4 +1,6 @@
 #include "themes.h"
+#include <fmt/core.h>
+#include <libproc.h>
 #include <memory>
 #include <signal.h>
 #include <spdlog/spdlog.h>
@@ -6,6 +8,7 @@
 #include <unistd.h>
 
 extern std::shared_ptr<spdlog::logger> logger;
+extern pid_t process_to_track;
 
 void signalHandler(int raised_signal) {
   logger->info("Got signal {}", raised_signal);
@@ -16,7 +19,7 @@ void setupProcessHook() {
   ::signal(SIGINT, signalHandler);
   ::signal(SIGPIPE, signalHandler);
 
-  auto ppid = getppid();
+  auto ppid = process_to_track;
   auto fpid = fork();
   if (fpid != 0) {
     logger->info("Forked successfully");

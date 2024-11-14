@@ -43,6 +43,7 @@ int main(int argc, char *argv[]) {
 
   // Set up logging to file.
   logger = spdlog::daily_logger_mt(APP_NAME, get_log_filename(), 3, 14);
+  spdlog::set_default_logger(logger);
   std::time_t now = std::time(nullptr);
   logger->info("=== {:%Y-%m-%d} {:%H:%M:%S}", fmt::localtime(now),
                fmt::localtime(now));

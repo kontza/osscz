@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fmt/core.h>
 #include <fstream>
+#include <libproc.h>
 #include <map>
 #include <ranges>
 #include <regex>
@@ -21,6 +22,7 @@
 #define TOML "TOML"
 
 extern std::shared_ptr<spdlog::logger> logger;
+pid_t process_to_track;
 
 static std::map<std::string, std::string> patterns = {
     {PALETTE, "4;"},
@@ -191,7 +193,24 @@ void setSchemeForHost(std::string host_name) {
 bool shouldChangeTheme() {
   auto const ppid = getppid();
   auto parent_command_line = pidToCommandLine(ppid);
-  logger->info("Parent, {}, command line: '{}'", ppid, parent_command_line);
+  if (!parent_command_line.contains("ssh")) {
+    // Parent command line didn't contain "ssh",
+    // try checking grandparent's command line.
+    logger->info("No 'ssh' in parent command line, check grandparent");
+    struct proc_bsdinfo grandparent;
+    proc_pidinfo(ppid, PROC_PIDTBSDINFO, 0, &grandparent,
+                 PROC_PIDTBSDINFO_SIZE);
+    auto gpcli = pidToCommandLine(grandparent.pbi_ppid);
+    logger->info("Grandparent {} command line: {}", grandparent.pbi_ppid,
+                 gpcli);
+    if (gpcli.contains("ssh")) {
+      parent_command_line = gpcli;
+      process_to_track = grandparent.pbi_ppid;
+    }
+  } else {
+    logger->info("Parent, {}, command line: '{}'", ppid, parent_command_line);
+    process_to_track = ppid;
+  }
   auto config_home_ptr = std::getenv("XDG_CONFIG_HOME");
   std::string config_home;
   if (config_home_ptr == nullptr) {
