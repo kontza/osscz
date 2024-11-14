@@ -52,7 +52,8 @@ int main(int argc, char *argv[]) {
   if (shouldChangeTheme()) {
     auto host_name = argv[1];
     auto reset_scheme = std::string{"RESET-SCHEME"};
-    if (host_name == reset_scheme) {
+    auto reset_theme = std::string{"RESET-THEME"};
+    if (host_name == reset_scheme || host_name == reset_theme) {
       resetScheme();
     } else {
       setSchemeForHost(host_name);

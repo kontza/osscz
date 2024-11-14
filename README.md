@@ -85,11 +85,30 @@ bypasses = [
     * With Ghostty: `SetEnv TERMINAL_THEME=[theme name from running 'ghostty +list-themes']`
     * With WezTerm: `SetEnv TERMINAL_THEME=[path to a WezTerm style color definition TOML file]`
     * `LocalCommand $HOME/.local/bin/osscz %n`
+    * A simple example:
+      ```
+      Host alytollo
+          PermitLocalCommand yes
+          SetEnv TERMINAL_THEME=$HOME/.config/wezterm/colors/3024.toml
+          LocalCommand $HOME/.local/bin/osscz %n
+      ```
+    * A pro example:
+      ```
+      Host alytollo
+          PermitLocalCommand yes
+          SetEnv TERMINAL_THEME=$HOME/.config/wezterm/colors/3024.toml
+
+      # ... And at the end of ~/.ssh/config.
+      Match all
+      LocalCommand $HOME/.local/bin/osscz %n
+      ```
   * _Osscz_ starts to wait for its parent SSH process to quit. When SSH quits, it automatically reset back to the default color theme.
 - **Reset Theme**: To reset the theme manually, run:
 
   ```sh
   osscz RESET-SCHEME
+  # Or
+  osscz RESET-THEME
   ```
 
 ## Troubleshooting
