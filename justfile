@@ -31,3 +31,7 @@ cmake-debug: conan-debug
 debug:
     cmake --build --preset conan-debug
 
+# After updating dependencies, run this:
+post-deps:
+    conan install --build missing conanfile.py
+

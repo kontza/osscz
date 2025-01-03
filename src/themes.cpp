@@ -13,6 +13,7 @@
 #include <regex>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
+#include <string>
 #include <toml.hpp>
 #include <unistd.h>
 
@@ -20,6 +21,8 @@
 #define PRINT_ANSI_FMT "\x1b]{}{}\x07"
 #define LOG_FMT "'{}': Would use '{}'"
 #define TOML "TOML"
+#define SSH_MARKER "ssh "
+#define LAUNCHD_PID 1
 
 extern std::shared_ptr<spdlog::logger> logger;
 pid_t process_to_track;
@@ -43,7 +46,7 @@ void resetScheme() {
 }
 
 std::string getThemeName(std::string host_name) {
-  logger->info("Scanning SSH config for {}", THEME_MARKER);
+  logger->info("Scanning SSH config for {} in {}", THEME_MARKER, host_name);
   auto result = runCommand(fmt::format("ssh -G {}", host_name));
   std::stringstream ss(result);
   std::string line;
@@ -190,27 +193,7 @@ void setSchemeForHost(std::string host_name) {
   }
 }
 
-bool shouldChangeTheme() {
-  auto const ppid = getppid();
-  auto parent_command_line = pidToCommandLine(ppid);
-  if (!parent_command_line.contains("ssh")) {
-    // Parent command line didn't contain "ssh",
-    // try checking grandparent's command line.
-    logger->info("No 'ssh' in parent command line, check grandparent");
-    struct proc_bsdinfo grandparent;
-    proc_pidinfo(ppid, PROC_PIDTBSDINFO, 0, &grandparent,
-                 PROC_PIDTBSDINFO_SIZE);
-    auto gpcli = pidToCommandLine(grandparent.pbi_ppid);
-    logger->info("Grandparent {} command line: {}", grandparent.pbi_ppid,
-                 gpcli);
-    if (gpcli.contains("ssh")) {
-      parent_command_line = gpcli;
-      process_to_track = grandparent.pbi_ppid;
-    }
-  } else {
-    logger->info("Parent, {}, command line: '{}'", ppid, parent_command_line);
-    process_to_track = ppid;
-  }
+bool shouldBypass(std::string command_line) {
   auto config_home_ptr = std::getenv("XDG_CONFIG_HOME");
   std::string config_home;
   if (config_home_ptr == nullptr) {
@@ -225,11 +208,43 @@ bool shouldChangeTheme() {
   for (auto bypass : bypasses) {
     std::regex checker(bypass, std::regex_constants::ECMAScript);
     logger->info("Checking against '{}'", bypass);
-    if (std::regex_search(parent_command_line, checker)) {
+    if (std::regex_search(command_line, checker)) {
       logger->info("Matched");
-      return false;
+      return true;
     }
   }
   logger->info("None of the bypasses matched");
-  return true;
+  return false;
+}
+
+bool shouldChangeTheme() {
+  auto ppid = getpid();
+  auto process_to_track = ppid;
+  // Walk up the process tree to find 'ssh ' command line.
+  auto ancestor_found = false;
+  auto parent_command_line = std::string{};
+  while (!ancestor_found && ppid != LAUNCHD_PID) {
+    struct proc_bsdinfo ancestor;
+    proc_pidinfo(ppid, PROC_PIDTBSDINFO, 0, &ancestor, PROC_PIDTBSDINFO_SIZE);
+    auto gpcli = pidToCommandLine(ancestor.pbi_ppid);
+    logger->info("PID {} ancestor {} command line: {}", ppid, ancestor.pbi_ppid,
+                 gpcli);
+    if (gpcli.contains(SSH_MARKER)) {
+      if (!shouldBypass(gpcli)) {
+        process_to_track = ancestor.pbi_ppid;
+        ancestor_found = true;
+        break;
+      } else {
+        ppid = ancestor.pbi_ppid;
+      }
+    } else {
+      if (ppid == ancestor.pbi_ppid) {
+        logger->info("Parent and its ancestor PID are the same! Cannot "
+                     "compute! Bail out!");
+        break;
+      }
+      ppid = ancestor.pbi_ppid;
+    }
+  }
+  return ancestor_found;
 }

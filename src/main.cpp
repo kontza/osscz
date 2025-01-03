@@ -1,11 +1,10 @@
-#include "cmd.h"
 #include "themes.h"
 #include "version.h"
 #include <cstdlib>
 #include <filesystem>
+#include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <memory>
-#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <sys/_types/_pid_t.h>
@@ -21,7 +20,7 @@
 #define LOG_NAME "ssh_colouriser.log"
 std::shared_ptr<spdlog::logger> logger;
 
-spdlog::filename_t get_log_filename() {
+spdlog::filename_t getLogFilename() {
   auto tmp_dir_ptr = std::getenv("TMPDIR");
   std::string tmp_dir;
   if (tmp_dir_ptr == nullptr) {
@@ -42,7 +41,10 @@ int main(int argc, char *argv[]) {
   }
 
   // Set up logging to file.
-  logger = spdlog::daily_logger_mt(APP_NAME, get_log_filename(), 3, 14);
+  logger = spdlog::daily_logger_st(APP_NAME, getLogFilename(), 3, 14, false, 5);
+  logger->set_level(spdlog::level::trace);
+  logger->set_error_handler(
+      [](const std::string &msg) { throw std::runtime_error(msg); });
   spdlog::set_default_logger(logger);
   std::time_t now = std::time(nullptr);
   logger->info("=== {:%Y-%m-%d} {:%H:%M:%S}", fmt::localtime(now),
@@ -50,13 +52,14 @@ int main(int argc, char *argv[]) {
   logger->info("Welcome my son, welcome to the machine!");
 
   // Should we change the theme?
-  if (shouldChangeTheme()) {
-    auto host_name = argv[1];
-    auto reset_scheme = std::string{"RESET-SCHEME"};
-    auto reset_theme = std::string{"RESET-THEME"};
-    if (host_name == reset_scheme || host_name == reset_theme) {
-      resetScheme();
-    } else {
+  auto should_change = shouldChangeTheme();
+  auto host_name = argv[1];
+  auto reset_scheme = std::string{"RESET-SCHEME"};
+  auto reset_theme = std::string{"RESET-THEME"};
+  if (host_name == reset_scheme || host_name == reset_theme) {
+    resetScheme();
+  } else {
+    if (should_change) {
       setSchemeForHost(host_name);
     }
   }

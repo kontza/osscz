@@ -61,5 +61,6 @@ class ossczRecipe(ConanFile):
         cmake.install()
 
     def requirements(self: Self):
-        self.requires("spdlog/1.14.1")
+        self.requires("spdlog/1.15.0")
         self.requires("toml11/4.2.0")
+        self.requires("fmt/11.0.2")

@@ -1,4 +1,5 @@
 #include "themes.h"
+#include <cstdlib>
 #include <fmt/core.h>
 #include <libproc.h>
 #include <memory>
@@ -12,6 +13,7 @@ extern pid_t process_to_track;
 
 void signalHandler(int raised_signal) {
   logger->info("Got signal {}", raised_signal);
+  spdlog::shutdown();
   resetScheme();
 }
 
