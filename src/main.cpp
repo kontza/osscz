@@ -51,17 +51,14 @@ int main(int argc, char *argv[]) {
                fmt::localtime(now));
   logger->info("Welcome my son, welcome to the machine!");
 
-  // Should we change the theme?
-  auto should_change = shouldChangeTheme();
+  // Change or reset?
   auto host_name = argv[1];
   auto reset_scheme = std::string{"RESET-SCHEME"};
   auto reset_theme = std::string{"RESET-THEME"};
   if (host_name == reset_scheme || host_name == reset_theme) {
     resetScheme();
   } else {
-    if (should_change) {
-      setSchemeForHost(host_name);
-    }
+    setSchemeForHost(host_name);
   }
 
   // Done.
