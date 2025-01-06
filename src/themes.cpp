@@ -29,9 +29,9 @@ pid_t process_to_track;
 
 static std::map<std::string, std::string> patterns = {
     {PALETTE, "4;"},
-    {"foreground", "10;#"},
-    {"background", "11;#"},
-    {"cursor-color", "12;#"},
+    {"foreground", "10;"},
+    {"background", "11;"},
+    {"cursor-color", "12;"},
 };
 
 void resetScheme() {
@@ -69,6 +69,7 @@ std::string getThemeName(std::string host_name) {
 
 void printAnsiEscape(std::string line, std::string prefix, std::string value,
                      int color_index) {
+  logger->error("VALUE = {}", value);
   // Escape backslashes for logging.
   auto value_to_print = value;
   if (color_index >= 0) {
@@ -94,7 +95,6 @@ void handleTomlTheme(std::string theme_name) {
     logger->info("compose_cursor not found");
   }
   int end_index = fminl(ansi.size(), 8);
-  std::string to_log{};
 
   for (int color_index = 0; color_index < ansi.size(); color_index++) {
     printAnsiEscape(TOML, patterns[PALETTE], ansi[color_index], color_index);
@@ -104,10 +104,10 @@ void handleTomlTheme(std::string theme_name) {
     printAnsiEscape(TOML, patterns[PALETTE], brights[color_index],
                     color_index + 8);
   }
-  printAnsiEscape(TOML, patterns["foreground"], foreground.substr(1), -1);
-  printAnsiEscape(TOML, patterns["background"], background.substr(1), -1);
+  printAnsiEscape(TOML, patterns["foreground"], foreground, -1);
+  printAnsiEscape(TOML, patterns["background"], background, -1);
   if (!cursor.empty()) {
-    printAnsiEscape(TOML, patterns["cursor-color"], cursor.substr(1), -1);
+    printAnsiEscape(TOML, patterns["cursor-color"], cursor, -1);
   }
 }
 
@@ -139,7 +139,7 @@ void handleGhosttyTheme(std::string theme_name) {
       }
       // Sample lines:
       //   palette = 15=#f5f7ff
-      //   background = 202746
+      //   background = #202746
       // Split line from first '='.
       auto eq_pos = line.find('=');
       if (eq_pos == std::string::npos) {
@@ -148,21 +148,19 @@ void handleGhosttyTheme(std::string theme_name) {
       // 'palette' or 'background'
       auto setting_name = line.substr(0, eq_pos);
       rtrim(setting_name);
-      // '15=#f5f7ff' or '202746'
+      // '15=#f5f7ff' or '#202746'
       auto setting = line.substr(1 + eq_pos);
       ltrim(setting);
-      // Now we have either '15=#f5f7ff', or '202746'.
+      // Now we have either '15=#f5f7ff', or '#202746'.
       // Get keys from patterns map.
       auto kv = std::views::keys(patterns);
-      auto kotain = std::views::keys(patterns);
       std::vector<std::string> keys{kv.begin(), kv.end()};
-      std::string to_log{""};
       // Iterate over those map keys.
       for (auto const &pattern : keys) {
         // Does the current map key match the current line's setting name?
         if (pattern == setting_name) {
           // Convert '15=#f5f7ff' to '15;#f5f7ff'.
-          // '202746' will be left as is.
+          // '#202746' will be left as is.
           std::replace(setting.begin(), setting.end(), '=', ';');
           // Sanity check: do we have a value to set?
           if (setting.length() > 0) {
