@@ -1,7 +1,6 @@
 #include "themes.h"
 #include "cmd.h"
 #include "env-expand.h"
-#include "signals.h"
 #include "trim.h"
 #include <cmath>
 #include <filesystem>
@@ -185,7 +184,6 @@ void setSchemeForHost(std::string host_name) {
     } else {
       handleGhosttyTheme(theme_name);
     }
-    setupProcessHook();
   } else {
     logger->info("No {} found for '{}'", THEME_MARKER, host_name);
   }

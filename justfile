@@ -10,12 +10,12 @@ conan-release:
 cmake-release: conan-release
     cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 --preset conan-release
     ln -sf ./build/Release/compile_commands.json
-    cp ./build/Release/version.h ./src/
+    cp build/Release/version.h ./src/
 
 # R-3. Build release
 release:
     cmake --build --preset conan-release
-    cp ./build/Release/osscz $HOME/.local/bin/
+    cp build/Release/osscz $HOME/.local/bin/
 
 # D-1. Generate build/Debug configuration
 conan-debug:
@@ -25,7 +25,7 @@ conan-debug:
 cmake-debug: conan-debug
     cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 --preset conan-debug
     ln -sf ./build/Debug/compile_commands.json
-    cp ./build/Debug/version.h ./src/
+    cp build/Debug/version.h ./src/
 
 # D-3. Build debug
 debug:
