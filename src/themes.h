@@ -9,6 +9,5 @@
 #define TOML_NAME "scz.toml"
 
 void resetScheme();
-std::string getThemeName(std::string host_name);
-void setSchemeForHost(std::string host_name);
-bool shouldChangeTheme();
+std::string getThemeName(std::string arguments);
+void setScheme(std::string host_name);

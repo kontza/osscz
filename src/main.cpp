@@ -1,4 +1,5 @@
 #include "themes.h"
+#include "trim.h"
 #include "version.h"
 #include <cstdlib>
 #include <filesystem>
@@ -7,6 +8,7 @@
 #include <memory>
 #include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <sys/_types/_pid_t.h>
 #include <sys/event.h>
 #include <unistd.h>
@@ -34,9 +36,9 @@ spdlog::filename_t getLogFilename() {
 
 int main(int argc, char *argv[]) {
   // Sanity check on command line arguments.
-  if (argc != 2) {
+  if (argc < 2) {
     fmt::println("{} v{}{}", APP_NAME, APP_VERSION, BUILD);
-    spdlog::critical("Gimme a single SSH host name to work on!");
+    spdlog::critical("Not enough arguments!");
     return 1;
   }
 
@@ -52,13 +54,24 @@ int main(int argc, char *argv[]) {
   logger->info("Welcome my son, welcome to the machine!");
 
   // Change or reset?
-  auto host_name = argv[1];
+  std::string arguments;
+  auto should_reset = false;
   auto reset_scheme = std::string{"RESET-SCHEME"};
   auto reset_theme = std::string{"RESET-THEME"};
-  if (host_name == reset_scheme || host_name == reset_theme) {
+  for (int i = 1; i < argc; i++) {
+    if (argv[i] != nullptr) {
+      if (argv[i] == reset_scheme || argv[i] == reset_theme) {
+        should_reset = true;
+      }
+      arguments += argv[i];
+      arguments += " ";
+    }
+  }
+  auto theme_name = getThemeName(arguments);
+  if (should_reset) {
     resetScheme();
   } else {
-    setSchemeForHost(host_name);
+    setScheme(theme_name);
   }
 
   // Done.
