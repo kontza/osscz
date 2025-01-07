@@ -9,7 +9,6 @@
 #include <libproc.h>
 #include <map>
 #include <ranges>
-#include <regex>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
@@ -44,9 +43,10 @@ void resetScheme() {
   fmt::print("\x1b]112\x07");
 }
 
-std::string getThemeName(std::string host_name) {
-  logger->info("Scanning SSH config for {} in {}", THEME_MARKER, host_name);
-  auto result = runCommand(fmt::format("ssh -G {}", host_name));
+std::string getThemeName(std::string arguments) {
+  logger->info("Scanning SSH config for {} in '{}'...", THEME_MARKER,
+               arguments);
+  auto result = runCommand(fmt::format("ssh -G {}", arguments));
   std::stringstream ss(result);
   std::string line;
   char delimiter = '\n';
@@ -174,8 +174,7 @@ void handleGhosttyTheme(std::string theme_name) {
   }
 }
 
-void setSchemeForHost(std::string host_name) {
-  auto const theme_name = getThemeName(host_name);
+void setScheme(std::string theme_name) {
   if (theme_name.length()) {
     // Is this a TOML file?
     std::filesystem::path theme_path(theme_name);
@@ -185,62 +184,6 @@ void setSchemeForHost(std::string host_name) {
       handleGhosttyTheme(theme_name);
     }
   } else {
-    logger->info("No {} found for '{}'", THEME_MARKER, host_name);
+    logger->info("No {} found for", THEME_MARKER);
   }
-}
-
-bool shouldBypass(std::string command_line) {
-  auto config_home_ptr = std::getenv("XDG_CONFIG_HOME");
-  std::string config_home;
-  if (config_home_ptr == nullptr) {
-    config_home = std::getenv("HOME");
-  } else {
-    config_home = config_home_ptr;
-  }
-  std::filesystem::path config_path = config_home;
-  std::filesystem::path toml_path = config_path / TOML_NAME;
-  auto toml = toml::parse(toml_path.string());
-  auto bypasses = toml::find<std::vector<std::string>>(toml, "bypasses");
-  for (auto bypass : bypasses) {
-    std::regex checker(bypass, std::regex_constants::ECMAScript);
-    logger->info("Checking against '{}'", bypass);
-    if (std::regex_search(command_line, checker)) {
-      logger->info("Matched");
-      return true;
-    }
-  }
-  logger->info("None of the bypasses matched");
-  return false;
-}
-
-bool shouldChangeTheme() {
-  auto ppid = getpid();
-  auto process_to_track = ppid;
-  // Walk up the process tree to find 'ssh ' command line.
-  auto ancestor_found = false;
-  auto parent_command_line = std::string{};
-  while (!ancestor_found && ppid != LAUNCHD_PID) {
-    struct proc_bsdinfo ancestor;
-    proc_pidinfo(ppid, PROC_PIDTBSDINFO, 0, &ancestor, PROC_PIDTBSDINFO_SIZE);
-    auto gpcli = pidToCommandLine(ancestor.pbi_ppid);
-    logger->info("PID {} ancestor {} command line: {}", ppid, ancestor.pbi_ppid,
-                 gpcli);
-    if (gpcli.contains(SSH_MARKER)) {
-      if (!shouldBypass(gpcli)) {
-        process_to_track = ancestor.pbi_ppid;
-        ancestor_found = true;
-        break;
-      } else {
-        ppid = ancestor.pbi_ppid;
-      }
-    } else {
-      if (ppid == ancestor.pbi_ppid) {
-        logger->info("Parent and its ancestor PID are the same! Cannot "
-                     "compute! Bail out!");
-        break;
-      }
-      ppid = ancestor.pbi_ppid;
-    }
-  }
-  return ancestor_found;
 }
