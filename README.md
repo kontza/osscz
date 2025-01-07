@@ -1,6 +1,7 @@
 # Osscz, an SSH Colouriser User Guide
 
-Welcome to _osscz_, a command-line application designed to dynamically change Ghostty's terminal themes based on SSH connections. This guide will help you install, configure, and use _osscz_ effectively.
+Welcome to _osscz_, a command-line application designed to dynamically change
+Ghostty's terminal themes based on SSH connections.
 
 ## Table of Contents
 
@@ -13,7 +14,9 @@ Welcome to _osscz_, a command-line application designed to dynamically change Gh
 
 ## Introduction
 
-_Osscz_ automatically adjusts your terminal theme when connecting to different SSH hosts. By specifying themes in your SSH configuration, you can have a personalized terminal experience for each host.
+_Osscz_ adjusts your terminal theme when connecting to different
+SSH hosts. By specifying themes in your SSH configuration, you can have a
+personalized terminal experience for each host.
 
 ## System Requirements
 
@@ -28,7 +31,8 @@ _Osscz_ automatically adjusts your terminal theme when connecting to different S
 
 ### Step 1: Prerequisites
 
-Ensure you have Just, Conan v2.x, Cmake v3.30, and a C++ compiler and required libraries installed. On Ubuntu, you can install them with:
+Ensure you have Just, Conan v2.x, Cmake v3.30, and a C++ compiler and required
+libraries installed. On Ubuntu, you can install them with:
 
 Using Homebrew:
 
@@ -51,58 +55,31 @@ just cmake-release
 
 The application uses environment variables for configuration:
 
-- `GHOSTTY_RESOURCES_DIR`: Directory containing theme files. Usually set automatically by Ghostty. If it is not set, it is:
-  * macOS: `/Applications/Ghostty.app/Contents/Resources/ghostty`
+- `GHOSTTY_RESOURCES_DIR`: Directory containing theme files. Usually set
+  automatically by Ghostty. If it is not set, it is:
+  - macOS: `/Applications/Ghostty.app/Contents/Resources/ghostty`
 `
-- `XDG_CONFIG_HOME`: Directory where `scz.toml` configuration file is located. Usually this is `$HOME/.config/`.
-
-## Configuration
-
-Create a configuration file `scz.toml` in your `XDG_CONFIG_HOME` directory. This file should contain a list of patterns to bypass theme from changing. See the included `scz.toml` for examples.
-
-```toml
-bypasses = [
-    # Bypass Consul operations on remote servers
-    "CONSUL_HTTP_TOKEN",
-    # Bypass: git over SSH
-    "git-upload-pack",
-    # Bypass: git over SSH
-    "git-receive-pack",
-    # Bypass: rsync over SSH
-    "rsync",
-    # Bypass: ProxyJump stage with SSH
-    "ssh -W",
-    # BatchMode; e.g. tab completion in an 'scp' command completion on remote server
-    "BatchMode yes",
-]
-```
+- `XDG_CONFIG_HOME`: Directory where `scz.toml` configuration file is located.
+  Usually this is `$HOME/.config/`.
 
 ## Basic Usage
 
 - **Change Theme**: Automatically changes terminal theme based on SSH host:
-  * You need to add the following in your `~/ssh/config` for a host you want to change the theme:
-    * `PermitLocalCommand yes`
-    * With Ghostty: `SetEnv TERMINAL_THEME=[theme name from running 'ghostty +list-themes']`
-    * With WezTerm: `SetEnv TERMINAL_THEME=[path to a WezTerm style color definition TOML file]`
-    * `LocalCommand $HOME/.local/bin/osscz %n`
-    * A simple example:
-      ```
-      Host alytollo
-          PermitLocalCommand yes
-          SetEnv TERMINAL_THEME=$HOME/.config/wezterm/colors/3024.toml
-          LocalCommand $HOME/.local/bin/osscz %n
-      ```
-    * A pro example:
-      ```
-      Host alytollo
-          PermitLocalCommand yes
-          SetEnv TERMINAL_THEME=$HOME/.config/wezterm/colors/3024.toml
+  - Create a shell script to work as a front-end for SSH. See `sch` in this repo
+    for an example.
+  - You need to add the following in your `~/ssh/config` for a host you want
+    to change the theme:
+    - With Ghostty:
+      `SetEnv TERMINAL_THEME=[theme name from running 'ghostty +list-themes']`
+    - With WezTerm:
+      `SetEnv TERMINAL_THEME=[path to a WezTerm style color definition TOML file]`
+    - A simple example:
 
-      # ... And at the end of ~/.ssh/config.
-      Match all
-      LocalCommand $HOME/.local/bin/osscz %n
+      ```config
+      Host alytollo
+          SetEnv TERMINAL_THEME=$HOME/.config/wezterm/colors/3024.toml
       ```
-  * _Osscz_ starts to wait for its parent SSH process to quit. When SSH quits, it automatically reset back to the default color theme.
+
 - **Reset Theme**: To reset the theme manually, run:
 
   ```sh
@@ -114,5 +91,5 @@ bypasses = [
 ## Troubleshooting
 
 - **Logs**:
-  * Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`. From there you can check the parent command line to see if it matches some entry in your bypasses.
-  * Note that both _Osscz_ processes, the main process, and the forked one, log partly the same log lines. Therefore, it is advisable to first `sort` the log file to get things in linear order.
+  - Check logs for detailed debugging information. On macOS the location is `$TMPDIR/ssh_colouriser_[DATE].log`. From there you can check the parent command line to see if it matches some entry in your bypasses.
+  - Note that both _Osscz_ processes, the main process, and the forked one, log partly the same log lines. Therefore, it is advisable to first `sort` the log file to get things in linear order.
